@@ -8,8 +8,6 @@ import { PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
 import { dynamoDBClient, TABLE_NAMES } from '../shared/dynamodb-client';
 import { hashPassword, validatePasswordStrength } from '../shared/password-utils';
-import { generateOtp, storeOtp } from '../shared/otp-utils';
-import { sendOtpEmail } from '../shared/email-service';
 import {
   createSuccessResponse,
   ErrorResponses,
@@ -39,36 +37,7 @@ interface RegisterResponse {
 export async function handler(
   event: APIGatewayProxyEvent
 ): Promise<APIGatewayProxyResult> {
-  // Enhanced logging for debugging
-  console.error('[REGISTER] Registration request received');
-  console.error('[REGISTER] Full Event:', JSON.stringify(event, null, 2));
-  console.error('[REGISTER] Event keys:', Object.keys(event));
-  
-  // Validate event structure
-  if (!event || typeof event !== 'object') {
-    console.error('[REGISTER] Invalid event structure:', event);
-    return ErrorResponses.internalError('Invalid event structure', undefined);
-  }
-  
-  // Check if event has required fields (LocalStack sometimes sends empty events)
-  if (!event.httpMethod && !event.path && !event.headers && !event.body) {
-    console.error('[REGISTER] Empty event received - this may be a LocalStack API Gateway issue');
-    console.error('[REGISTER] Event type:', typeof event);
-    console.error('[REGISTER] Event keys:', Object.keys(event || {}));
-    return {
-      statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-      },
-      body: JSON.stringify({
-        error: 'Invalid request: Event structure is empty. This may be a LocalStack API Gateway configuration issue.',
-        details: 'The Lambda received an empty event object. Please check API Gateway integration configuration.',
-      }),
-    };
-  }
-  
-  // Extract origin from headers for CORS (with defensive checks)
+  // Extract origin from headers for CORS
   const origin = event.headers?.origin || event.headers?.Origin || '*';
 
   try {
@@ -85,7 +54,7 @@ export async function handler(
       }, origin);
     }
 
-    const { email, password, givenName, familyName, studyGoal } = body;
+    const { email, password, givenName, studyGoal } = body;
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -184,19 +153,14 @@ export async function handler(
     */
 
     const response: RegisterResponse = {
-      message: 'Registration successful. You can now login.', // Updated message
+      message: 'Registration successful. You can now login.',
       email: email.toLowerCase(),
-      emailVerified: true, // Changed from false to true
+      emailVerified: true,
     };
 
-    console.error('[REGISTER] User registered successfully', { userId, email });
-
-    const _response = createSuccessResponse(response, 201, origin);
-    console.error('[REGISTER] Returning success response:', JSON.stringify(_response, null, 2));
-    return _response;
+    return createSuccessResponse(response, 201, origin);
   } catch (error: any) {
-    console.error('[REGISTER] Registration error:', error);
-    console.error('[REGISTER] Error stack:', error.stack);
+    console.error('Registration error:', error);
 
     if (error.name === 'ConditionalCheckFailedException') {
       return ErrorResponses.conflict('User already exists', origin);

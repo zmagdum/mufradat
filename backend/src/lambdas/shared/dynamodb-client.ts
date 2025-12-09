@@ -4,13 +4,14 @@
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';
+import { getLocalStackEndpoint } from './localstack-endpoint';
 
 // Configure DynamoDB client for LocalStack or AWS
 const isLocalStack = process.env.STAGE === 'local';
 
 const dynamoDBClientConfig = isLocalStack
   ? {
-      endpoint: process.env.AWS_ENDPOINT_URL || 'http://localhost:4566',
+      endpoint: getLocalStackEndpoint(),
       region: process.env.AWS_DEFAULT_REGION || 'us-east-1',
       credentials: {
         accessKeyId: 'test',

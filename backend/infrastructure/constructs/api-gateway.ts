@@ -278,6 +278,9 @@ export class ApiGateway extends Construct {
         AWS_ENDPOINT_URL: this.config.localStack?.enabled ? this.config.localStack.endpoint : '',
         JWT_SECRET: process.env.JWT_SECRET || 'dev-secret-key-change-in-production',
         JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret-key-change-in-production',
+        // Email verification: Set to 'true' to require email verification before login
+        // For local/testing, set to 'false' to skip email verification
+        REQUIRE_EMAIL_VERIFICATION: this.config.stage === 'local' ? 'false' : (process.env.REQUIRE_EMAIL_VERIFICATION || 'false'),
         // Note: AWS_DEFAULT_REGION is set automatically by Lambda runtime
       },
     });
@@ -350,36 +353,9 @@ export class ApiGateway extends Construct {
     });
     
     // Add POST method to login endpoint
-    login.addMethod('POST', new apigateway.LambdaIntegration(loginFunction, {
-      proxy: true,
-    }), {
-      methodResponses: [
-        {
-          statusCode: '200',
-          responseParameters: {
-            'method.response.header.Access-Control-Allow-Origin': true,
-            'method.response.header.Access-Control-Allow-Credentials': true,
-            'method.response.header.Content-Type': true,
-          },
-        },
-        {
-          statusCode: '401',
-          responseParameters: {
-            'method.response.header.Access-Control-Allow-Origin': true,
-            'method.response.header.Access-Control-Allow-Credentials': true,
-            'method.response.header.Content-Type': true,
-          },
-        },
-        {
-          statusCode: '403',
-          responseParameters: {
-            'method.response.header.Access-Control-Allow-Origin': true,
-            'method.response.header.Access-Control-Allow-Credentials': true,
-            'method.response.header.Content-Type': true,
-          },
-        },
-      ],
-    });
+    // Using LambdaIntegration without explicit proxy (defaults to proxy: true)
+    // Matching working demo configuration
+    login.addMethod('POST', new apigateway.LambdaIntegration(loginFunction));
 
     // Add POST method to verify-email endpoint
     verifyEmail.addMethod('POST', new apigateway.LambdaIntegration(verifyEmailFunction, {

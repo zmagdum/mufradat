@@ -11,13 +11,14 @@ import {
   HeadObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { getLocalStackEndpoint } from './localstack-endpoint';
 
 const isLocal = process.env.STAGE === 'local';
 
 const s3Client = new S3Client({
   region: process.env.AWS_DEFAULT_REGION || 'us-east-1',
   ...(isLocal && {
-    endpoint: process.env.AWS_ENDPOINT_URL || 'http://localhost:4566',
+    endpoint: getLocalStackEndpoint(),
     forcePathStyle: true, // Required for LocalStack
     credentials: {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID || 'test',

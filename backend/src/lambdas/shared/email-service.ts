@@ -5,6 +5,7 @@
  */
 
 import * as ses from '@aws-sdk/client-ses';
+import { getLocalStackEndpoint } from './localstack-endpoint';
 
 const FROM_EMAIL = process.env.FROM_EMAIL || 'noreply@mufradat.com';
 
@@ -26,7 +27,7 @@ function getSesClient(): ses.SESClient | null {
   
   const client = new ses.SESClient({
     region: process.env.AWS_DEFAULT_REGION || 'us-east-1',
-    endpoint: process.env.AWS_ENDPOINT_URL,
+    endpoint: process.env.AWS_ENDPOINT_URL ? getLocalStackEndpoint() : undefined,
   });
   
   (global as any).__sesClient = client;
