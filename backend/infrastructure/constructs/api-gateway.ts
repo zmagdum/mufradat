@@ -7,6 +7,7 @@ import { Tags } from 'aws-cdk-lib';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as path from 'path';
 import { Construct } from 'constructs';
@@ -39,61 +40,23 @@ export class ApiGateway extends Construct {
     this.sesEmail = sesEmail;
     this.kmsJwt = kmsJwt;
 
-    // CloudWatch Log Group for API Gateway logs
-    const logGroup = new logs.LogGroup(this, 'ApiLogs', {
-      logGroupName: `/aws/apigateway/mufradat-${config.stage}`,
-      retention: config.stage === 'prod' 
-        ? logs.RetentionDays.ONE_MONTH 
-        : logs.RetentionDays.ONE_WEEK,
-      removalPolicy: config.stage === 'prod'
-        ? cdk.RemovalPolicy.RETAIN
-        : cdk.RemovalPolicy.DESTROY,
-    });
-
-    // REST API
+    // REST API - Simplified to match working demo configuration
+    // LocalStack works better with simpler API Gateway configurations
     this.api = new apigateway.RestApi(this, 'MufradatApi', {
       restApiName: `mufradat-api-${config.stage}`,
       description: `Mufradat Quranic Vocabulary Learning API - ${config.stage}`,
       
-      // Deployment options
+      // Deployment options - simplified for LocalStack compatibility
       deployOptions: {
         stageName: config.api.stageName,
-        
-        // Logging
-        accessLogDestination: new apigateway.LogGroupLogDestination(logGroup),
-        accessLogFormat: apigateway.AccessLogFormat.jsonWithStandardFields({
-          caller: true,
-          httpMethod: true,
-          ip: true,
-          protocol: true,
-          requestTime: true,
-          resourcePath: true,
-          responseLength: true,
-          status: true,
-          user: true,
-        }),
-        loggingLevel: apigateway.MethodLoggingLevel.INFO,
-        dataTraceEnabled: config.stage !== 'prod',
-        
-        // Metrics
-        metricsEnabled: true,
-        
-        // Throttling
-        throttlingBurstLimit: config.stage === 'prod' ? 5000 : 100,
-        throttlingRateLimit: config.stage === 'prod' ? 10000 : 50,
-        
-        // Caching
-        cachingEnabled: config.stage === 'prod',
-        cacheClusterEnabled: config.stage === 'prod',
-        cacheClusterSize: config.stage === 'prod' ? '0.5' : undefined,
-        cacheTtl: cdk.Duration.minutes(5),
-        cacheDataEncrypted: true,
-        
-        // Tracing
-        tracingEnabled: true,
+        // Minimal logging for LocalStack compatibility
+        loggingLevel: config.stage !== 'local' ? apigateway.MethodLoggingLevel.INFO : apigateway.MethodLoggingLevel.OFF,
+        dataTraceEnabled: false, // Disable for LocalStack
+        metricsEnabled: config.stage !== 'local',
       },
       
-      // CORS configuration
+      // CORS configuration - handled in Lambda responses for LocalStack compatibility
+      // Note: CORS headers are set in Lambda function responses
       defaultCorsPreflightOptions: {
         allowOrigins: config.api.corsAllowedOrigins,
         allowMethods: apigateway.Cors.ALL_METHODS,
@@ -109,22 +72,10 @@ export class ApiGateway extends Construct {
         maxAge: cdk.Duration.hours(1),
       },
       
-      // API Keys and Usage Plans
-      apiKeySourceType: apigateway.ApiKeySourceType.HEADER,
-      
-      // CloudWatch role
-      cloudWatchRole: true,
-      
       // Endpoint configuration
       endpointConfiguration: {
         types: [apigateway.EndpointType.REGIONAL],
       },
-      
-      // Binary media types
-      binaryMediaTypes: ['image/*', 'audio/*', 'application/octet-stream'],
-      
-      // Minimum compression size (bytes)
-      minimumCompressionSize: 1024,
     });
 
     // Apply tags
@@ -133,43 +84,6 @@ export class ApiGateway extends Construct {
 
     // Create API resources and methods first
     this.setupApiResources();
-
-    // Note: Cognito Authorizer will be created when Lambda functions are added
-    // For now, we're just setting up the API structure
-    // TODO: Uncomment and attach to methods when implementing Lambda functions
-    // this.authorizer = new apigateway.CognitoUserPoolsAuthorizer(this, 'CognitoAuthorizer', {
-    //   cognitoUserPools: [userPool],
-    //   authorizerName: `mufradat-authorizer-${config.stage}`,
-    //   identitySource: 'method.request.header.Authorization',
-    //   resultsCacheTtl: cdk.Duration.minutes(5),
-    // });
-
-    // API Key and Usage Plan for external integrations
-    const apiKey = this.api.addApiKey('ApiKey', {
-      apiKeyName: `mufradat-api-key-${config.stage}`,
-      description: 'API Key for Mufradat external integrations',
-    });
-
-    const usagePlan = this.api.addUsagePlan('UsagePlan', {
-      name: `mufradat-usage-plan-${config.stage}`,
-      description: 'Usage plan for Mufradat API',
-      apiStages: [
-        {
-          api: this.api,
-          stage: this.api.deploymentStage,
-        },
-      ],
-      throttle: {
-        rateLimit: config.stage === 'prod' ? 10000 : 50,
-        burstLimit: config.stage === 'prod' ? 5000 : 100,
-      },
-      quota: {
-        limit: config.stage === 'prod' ? 1000000 : 10000,
-        period: apigateway.Period.MONTH,
-      },
-    });
-
-    usagePlan.addApiKey(apiKey);
 
     // Outputs
     new cdk.CfnOutput(this, 'ApiUrl', {
@@ -207,10 +121,10 @@ export class ApiGateway extends Construct {
     // so we only attach the authorizer in non-local environments.
     let jwtAuthorizerFunction: lambda.Function | undefined;
     if (!isLocal) {
-      jwtAuthorizerFunction = new lambda.Function(this, 'JwtAuthorizerFunction', {
+      jwtAuthorizerFunction = new NodejsFunction(this, 'JwtAuthorizerFunction', {
+        entry: path.join(__dirname, '../../src/lambdas/auth/jwt-authorizer.ts'),
+        handler: 'handler',
         runtime: lambda.Runtime.NODEJS_18_X,
-        handler: 'jwt-authorizer.handler',
-        code: lambda.Code.fromAsset(path.join(__dirname, '../../dist/lambdas/auth')),
         timeout: cdk.Duration.seconds(5),
         environment: {
           JWT_SECRET: process.env.JWT_SECRET || 'dev-secret-key-change-in-production',
@@ -228,18 +142,12 @@ export class ApiGateway extends Construct {
       });
     }
 
-    // Helper: auth Lambda code asset and handlers
-    // Use prepared bundle directory that contains: src/lambdas/auth/*.js, shared/*.js, node_modules/
-    // This ensures shared utilities and runtime deps are available
-    const bundlePath = path.join(__dirname, '../../dist/lambda-bundle');
-    const authCode = lambda.Code.fromAsset(bundlePath);
-    const authHandler = (baseName: string) => `src/lambdas/auth/${baseName}.handler`;
-
     // Create Register Lambda Function
-    const registerFunction = new lambda.Function(this, 'RegisterFunction', {
+    // NodejsFunction automatically bundles TypeScript and dependencies
+    const registerFunction = new NodejsFunction(this, 'RegisterFunction', {
+      entry: path.join(__dirname, '../../src/lambdas/auth/register.ts'),
+      handler: 'handler',
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: authHandler('register'),
-      code: authCode,
       timeout: cdk.Duration.seconds(30),
       logRetention: logs.RetentionDays.ONE_DAY,
       environment: {
@@ -267,10 +175,10 @@ export class ApiGateway extends Construct {
     this.dynamoTables.otpTable.grantReadWriteData(registerFunction);
 
     // Create Login Lambda Function
-    const loginFunction = new lambda.Function(this, 'LoginFunction', {
+    const loginFunction = new NodejsFunction(this, 'LoginFunction', {
+      entry: path.join(__dirname, '../../src/lambdas/auth/login.ts'),
+      handler: 'handler',
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: authHandler('login'),
-      code: authCode,
       timeout: cdk.Duration.seconds(30),
       environment: {
         USERS_TABLE_NAME: this.dynamoTables.usersTable.tableName,
@@ -289,10 +197,10 @@ export class ApiGateway extends Construct {
     this.dynamoTables.usersTable.grantReadData(loginFunction);
 
     // Create Verify Email Lambda Function
-    const verifyEmailFunction = new lambda.Function(this, 'VerifyEmailFunction', {
+    const verifyEmailFunction = new NodejsFunction(this, 'VerifyEmailFunction', {
+      entry: path.join(__dirname, '../../src/lambdas/auth/verify-email.ts'),
+      handler: 'handler',
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: authHandler('verify-email'),
-      code: authCode,
       timeout: cdk.Duration.seconds(30),
       environment: {
         USERS_TABLE_NAME: this.dynamoTables.usersTable.tableName,
@@ -310,10 +218,10 @@ export class ApiGateway extends Construct {
     this.dynamoTables.otpTable.grantReadWriteData(verifyEmailFunction);
 
     // Create Refresh Token Lambda Function
-    const refreshFunction = new lambda.Function(this, 'RefreshFunction', {
+    const refreshFunction = new NodejsFunction(this, 'RefreshFunction', {
+      entry: path.join(__dirname, '../../src/lambdas/auth/refresh.ts'),
+      handler: 'handler',
       runtime: lambda.Runtime.NODEJS_18_X,
-      handler: authHandler('refresh'),
-      code: authCode,
       timeout: cdk.Duration.seconds(30),
       environment: {
         USERS_TABLE_NAME: this.dynamoTables.usersTable.tableName,
@@ -337,73 +245,22 @@ export class ApiGateway extends Construct {
     auth.addResource('logout');
     
     // Add POST method to register endpoint
-    register.addMethod('POST', new apigateway.LambdaIntegration(registerFunction, {
-      proxy: true,
-    }), {
-      methodResponses: [
-        {
-          statusCode: '201',
-          responseParameters: {
-            'method.response.header.Access-Control-Allow-Origin': true,
-            'method.response.header.Access-Control-Allow-Credentials': true,
-            'method.response.header.Content-Type': true,
-          },
-        },
-      ],
-    });
+    // Using LambdaIntegration without options - defaults to proxy: true
+    // Matching working demo configuration
+    register.addMethod('POST', new apigateway.LambdaIntegration(registerFunction));
     
     // Add POST method to login endpoint
-    // Using LambdaIntegration without explicit proxy (defaults to proxy: true)
+    // Using LambdaIntegration without options - defaults to proxy: true
     // Matching working demo configuration
     login.addMethod('POST', new apigateway.LambdaIntegration(loginFunction));
 
     // Add POST method to verify-email endpoint
-    verifyEmail.addMethod('POST', new apigateway.LambdaIntegration(verifyEmailFunction, {
-      proxy: true,
-    }), {
-      methodResponses: [
-        {
-          statusCode: '200',
-          responseParameters: {
-            'method.response.header.Access-Control-Allow-Origin': true,
-            'method.response.header.Access-Control-Allow-Credentials': true,
-            'method.response.header.Content-Type': true,
-          },
-        },
-        {
-          statusCode: '401',
-          responseParameters: {
-            'method.response.header.Access-Control-Allow-Origin': true,
-            'method.response.header.Access-Control-Allow-Credentials': true,
-            'method.response.header.Content-Type': true,
-          },
-        },
-      ],
-    });
+    // Using LambdaIntegration without options - defaults to proxy: true
+    verifyEmail.addMethod('POST', new apigateway.LambdaIntegration(verifyEmailFunction));
 
     // Add POST method to refresh endpoint
-    refresh.addMethod('POST', new apigateway.LambdaIntegration(refreshFunction, {
-      proxy: true,
-    }), {
-      methodResponses: [
-        {
-          statusCode: '200',
-          responseParameters: {
-            'method.response.header.Access-Control-Allow-Origin': true,
-            'method.response.header.Access-Control-Allow-Credentials': true,
-            'method.response.header.Content-Type': true,
-          },
-        },
-        {
-          statusCode: '401',
-          responseParameters: {
-            'method.response.header.Access-Control-Allow-Origin': true,
-            'method.response.header.Access-Control-Allow-Credentials': true,
-            'method.response.header.Content-Type': true,
-          },
-        },
-      ],
-    });
+    // Using LambdaIntegration without options - defaults to proxy: true
+    refresh.addMethod('POST', new apigateway.LambdaIntegration(refreshFunction));
 
     // User endpoints (protected in real environments - require JWT authorization)
     const users = this.api.root.addResource('users');
