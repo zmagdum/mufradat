@@ -26,19 +26,59 @@ if ! curl -s http://localhost:4566/_localstack/health > /dev/null 2>&1; then
     exit 1
 fi
 
-# Get API Gateway ID
-cd "$BACKEND_DIR"
-API_ID=$(awslocal apigateway get-rest-apis --query 'items[0].id' --output text 2>/dev/null || echo "")
+# Get API URL from CDK CloudFormation outputs
+cd "$BACKEND_DIR/infrastructure"
+STACK_NAME="mufradat-local"
 
-if [ -z "$API_ID" ]; then
-    echo -e "${RED}❌ Could not find API Gateway${NC}"
-    echo "Please deploy backend first:"
-    echo "  cd backend && npm run deploy:local"
-    exit 1
+# Try to get API URL from CloudFormation stack outputs
+API_URL=$(aws --endpoint-url=http://localhost:4566 cloudformation describe-stacks \
+  --stack-name "$STACK_NAME" \
+  --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' \
+  --output text 2>/dev/null || echo "")
+
+# If not found in outputs, try to get API Gateway ID and construct URL
+if [ -z "$API_URL" ] || [ "$API_URL" = "None" ]; then
+    echo -e "${YELLOW}⚠️  API URL not found in stack outputs, trying to construct from API Gateway ID...${NC}"
+    
+    # Get API Gateway ID
+    API_ID=$(awslocal apigateway get-rest-apis --query 'items[0].id' --output text 2>/dev/null || echo "")
+    
+    if [ -z "$API_ID" ]; then
+        echo -e "${RED}❌ Could not find API Gateway${NC}"
+        echo "Please deploy backend first:"
+        echo "  cd backend && npm run deploy:local"
+        exit 1
+    fi
+    
+    # Get stage name from stack outputs or default to v1
+    STAGE_NAME=$(aws --endpoint-url=http://localhost:4566 cloudformation describe-stacks \
+      --stack-name "$STACK_NAME" \
+      --query 'Stacks[0].Outputs[?OutputKey==`ApiStage`].OutputValue' \
+      --output text 2>/dev/null || echo "v1")
+    
+    if [ -z "$STAGE_NAME" ] || [ "$STAGE_NAME" = "None" ]; then
+        STAGE_NAME="v1"
+    fi
+    
+    # Construct URL using execute-api format (LocalStack's preferred format)
+    API_URL="https://${API_ID}.execute-api.localhost.localstack.cloud:4566/${STAGE_NAME}"
+    
+    echo -e "${GREEN}✅ API Gateway ID: $API_ID${NC}"
+    echo -e "${GREEN}✅ API Stage: $STAGE_NAME${NC}"
+else
+    # Extract API ID from URL for display (handle both formats)
+    if echo "$API_URL" | grep -q "execute-api"; then
+        # Format: https://<api-id>.execute-api.localhost.localstack.cloud:4566/<stage>
+        API_ID=$(echo "$API_URL" | sed -E 's|https?://([^.]+)\.execute-api.*|\1|' || echo "")
+    else
+        # Format: http://localhost:4566/restapis/<api-id>/<stage>
+        API_ID=$(echo "$API_URL" | sed -E 's|.*/restapis/([^/]+).*|\1|' || echo "")
+    fi
+    if [ -n "$API_ID" ]; then
+        echo -e "${GREEN}✅ API Gateway ID: $API_ID${NC}"
+    fi
 fi
 
-API_URL="http://localhost:4566/restapis/$API_ID/v1"
-echo -e "${GREEN}✅ API Gateway ID: $API_ID${NC}"
 echo -e "${GREEN}✅ API Base URL: $API_URL${NC}"
 echo ""
 

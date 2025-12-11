@@ -5,7 +5,6 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "build:lambda": "tsc && ./scripts/prepare-lambda-bundle.sh",
     "watch": "tsc -w",
     "test": "jest",
     "lint": "eslint . --ext .ts",
@@ -15,7 +14,8 @@
     "cdk:diff": "cdk diff",
     "cdk:deploy": "cdk deploy --all",
     "cdk:destroy": "cdk destroy --all",
-    "deploy:local": "./scripts/deploy-local.sh",
+    "bootstrap:local": "cd infrastructure && STAGE=local AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-east-1 AWS_ENDPOINT_URL=http://localhost:4566 npx cdklocal bootstrap aws://000000000000/us-east-1",
+    "deploy:local": "cd infrastructure && STAGE=local AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test AWS_DEFAULT_REGION=us-east-1 AWS_ENDPOINT_URL=http://localhost:4566 bash -c 'npx cdklocal bootstrap aws://000000000000/us-east-1 2>&1 | grep -v \"already bootstrapped\\|already exists\" || true; npx cdklocal deploy --all --require-approval never'",
     "deploy:dev": "./scripts/deploy-dev.sh",
     "deploy:prod": "./scripts/deploy-prod.sh",
     "localstack:start": "podman-compose up -d",

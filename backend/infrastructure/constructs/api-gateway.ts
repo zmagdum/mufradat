@@ -245,21 +245,12 @@ export class ApiGateway extends Construct {
     auth.addResource('logout');
     
     // Add POST method to register endpoint
-    // Using LambdaIntegration without options - defaults to proxy: true
-    // Matching working demo configuration
     register.addMethod('POST', new apigateway.LambdaIntegration(registerFunction));
-    
     // Add POST method to login endpoint
-    // Using LambdaIntegration without options - defaults to proxy: true
-    // Matching working demo configuration
     login.addMethod('POST', new apigateway.LambdaIntegration(loginFunction));
-
     // Add POST method to verify-email endpoint
-    // Using LambdaIntegration without options - defaults to proxy: true
     verifyEmail.addMethod('POST', new apigateway.LambdaIntegration(verifyEmailFunction));
-
     // Add POST method to refresh endpoint
-    // Using LambdaIntegration without options - defaults to proxy: true
     refresh.addMethod('POST', new apigateway.LambdaIntegration(refreshFunction));
 
     // User endpoints (protected in real environments - require JWT authorization)

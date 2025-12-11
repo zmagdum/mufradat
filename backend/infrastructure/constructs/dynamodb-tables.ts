@@ -6,19 +6,19 @@ import * as cdk from 'aws-cdk-lib';
 import { Tags } from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
-import { EnvironmentConfig, isLocalStack } from '../config/environment';
+import { EnvironmentConfig } from '../config/environment';
 
 export interface DynamoDBTablesProps {
   config: EnvironmentConfig;
 }
 
 export class DynamoDBTables extends Construct {
-  public readonly usersTable: dynamodb.ITable;
-  public readonly vocabularyTable: dynamodb.ITable;
-  public readonly progressTable: dynamodb.ITable;
-  public readonly conjugationsTable: dynamodb.ITable;
-  public readonly sessionsTable: dynamodb.ITable;
-  public readonly otpTable: dynamodb.ITable;
+  public readonly usersTable: dynamodb.Table;
+  public readonly vocabularyTable: dynamodb.Table;
+  public readonly progressTable: dynamodb.Table;
+  public readonly conjugationsTable: dynamodb.Table;
+  public readonly sessionsTable: dynamodb.Table;
+  public readonly otpTable: dynamodb.Table;
 
   constructor(scope: Construct, id: string, props: DynamoDBTablesProps) {
     super(scope, id);
@@ -27,22 +27,9 @@ export class DynamoDBTables extends Construct {
     const removalPolicy = config.stage === 'prod' 
       ? cdk.RemovalPolicy.RETAIN 
       : cdk.RemovalPolicy.DESTROY;
-    
-    const usingLocalStack = isLocalStack();
-    const useExistingTables = usingLocalStack && process.env.USE_EXISTING_TABLES === 'true';
 
     // Users Table
-    // For LocalStack: If tables are created separately, reference existing tables
-    if (useExistingTables) {
-      // Reference existing table instead of creating new one
-      this.usersTable = dynamodb.Table.fromTableName(
-        this,
-        'UsersTable',
-        `mufradat-users-${config.stage}`
-      );
-    } else {
-      // Create new table
-      this.usersTable = new dynamodb.Table(this, 'UsersTable', {
+    this.usersTable = new dynamodb.Table(this, 'UsersTable', {
         tableName: `mufradat-users-${config.stage}`,
         partitionKey: {
           name: 'userId',
@@ -57,11 +44,9 @@ export class DynamoDBTables extends Construct {
         pointInTimeRecovery: config.stage === 'prod',
         stream: config.stage === 'local' ? undefined : dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
       });
-    }
 
-    // GSI for email lookup (only if creating new table)
-    if (!useExistingTables) {
-      (this.usersTable as dynamodb.Table).addGlobalSecondaryIndex({
+    // GSI for email lookup
+    this.usersTable.addGlobalSecondaryIndex({
         indexName: 'EmailIndex',
         partitionKey: {
           name: 'email',
@@ -69,17 +54,9 @@ export class DynamoDBTables extends Construct {
         },
         projectionType: dynamodb.ProjectionType.ALL,
       });
-    }
 
     // Vocabulary Words Table
-    if (useExistingTables) {
-      this.vocabularyTable = dynamodb.Table.fromTableName(
-        this,
-        'VocabularyTable',
-        `mufradat-vocabulary-${config.stage}`
-      );
-    } else {
-      this.vocabularyTable = new dynamodb.Table(this, 'VocabularyTable', {
+    this.vocabularyTable = new dynamodb.Table(this, 'VocabularyTable', {
       tableName: `mufradat-vocabulary-${config.stage}`,
       partitionKey: {
         name: 'wordId',
@@ -90,12 +67,12 @@ export class DynamoDBTables extends Construct {
         : dynamodb.BillingMode.PAY_PER_REQUEST,
       readCapacity: config.dynamodb.readCapacity,
       writeCapacity: config.dynamodb.writeCapacity,
-      removalPolicy,
-      pointInTimeRecovery: config.stage === 'prod',
+        removalPolicy,
+        pointInTimeRecovery: config.stage === 'prod',
       });
 
-      // GSI for difficulty-based queries
-      (this.vocabularyTable as dynamodb.Table).addGlobalSecondaryIndex({
+    // GSI for difficulty-based queries
+    this.vocabularyTable.addGlobalSecondaryIndex({
         indexName: 'DifficultyIndex',
         partitionKey: {
           name: 'difficulty',
@@ -108,8 +85,8 @@ export class DynamoDBTables extends Construct {
         projectionType: dynamodb.ProjectionType.ALL,
       });
 
-      // GSI for word type queries
-      (this.vocabularyTable as dynamodb.Table).addGlobalSecondaryIndex({
+    // GSI for word type queries
+    this.vocabularyTable.addGlobalSecondaryIndex({
         indexName: 'WordTypeIndex',
         partitionKey: {
           name: 'wordType',
@@ -121,17 +98,9 @@ export class DynamoDBTables extends Construct {
         },
         projectionType: dynamodb.ProjectionType.ALL,
       });
-    }
 
     // Word Progress Table
-    if (useExistingTables) {
-      this.progressTable = dynamodb.Table.fromTableName(
-        this,
-        'ProgressTable',
-        `mufradat-progress-${config.stage}`
-      );
-    } else {
-      this.progressTable = new dynamodb.Table(this, 'ProgressTable', {
+    this.progressTable = new dynamodb.Table(this, 'ProgressTable', {
         tableName: `mufradat-progress-${config.stage}`,
         partitionKey: {
           name: 'userId',
@@ -151,8 +120,8 @@ export class DynamoDBTables extends Construct {
         stream: config.stage === 'local' ? undefined : dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
       });
 
-      // GSI for review queue queries (get words due for review)
-      (this.progressTable as dynamodb.Table).addGlobalSecondaryIndex({
+    // GSI for review queue queries (get words due for review)
+    this.progressTable.addGlobalSecondaryIndex({
         indexName: 'ReviewQueueIndex',
         partitionKey: {
           name: 'userId',
@@ -165,8 +134,8 @@ export class DynamoDBTables extends Construct {
         projectionType: dynamodb.ProjectionType.ALL,
       });
 
-      // GSI for mastery level queries
-      (this.progressTable as dynamodb.Table).addGlobalSecondaryIndex({
+    // GSI for mastery level queries
+    this.progressTable.addGlobalSecondaryIndex({
         indexName: 'MasteryIndex',
         partitionKey: {
           name: 'userId',
@@ -178,17 +147,9 @@ export class DynamoDBTables extends Construct {
         },
         projectionType: dynamodb.ProjectionType.ALL,
       });
-    }
 
     // Verb Conjugations Table
-    if (useExistingTables) {
-      this.conjugationsTable = dynamodb.Table.fromTableName(
-        this,
-        'ConjugationsTable',
-        `mufradat-conjugations-${config.stage}`
-      );
-    } else {
-      this.conjugationsTable = new dynamodb.Table(this, 'ConjugationsTable', {
+    this.conjugationsTable = new dynamodb.Table(this, 'ConjugationsTable', {
         tableName: `mufradat-conjugations-${config.stage}`,
         partitionKey: {
           name: 'verbId',
@@ -202,17 +163,9 @@ export class DynamoDBTables extends Construct {
         removalPolicy,
         pointInTimeRecovery: config.stage === 'prod',
       });
-    }
 
     // Learning Sessions Table
-    if (useExistingTables) {
-      this.sessionsTable = dynamodb.Table.fromTableName(
-        this,
-        'SessionsTable',
-        `mufradat-sessions-${config.stage}`
-      );
-    } else {
-      this.sessionsTable = new dynamodb.Table(this, 'SessionsTable', {
+    this.sessionsTable = new dynamodb.Table(this, 'SessionsTable', {
         tableName: `mufradat-sessions-${config.stage}`,
         partitionKey: {
           name: 'userId',
@@ -232,8 +185,8 @@ export class DynamoDBTables extends Construct {
         timeToLiveAttribute: 'expiresAt', // Auto-delete old sessions
       });
 
-      // GSI for date-based session queries
-      (this.sessionsTable as dynamodb.Table).addGlobalSecondaryIndex({
+    // GSI for date-based session queries
+    this.sessionsTable.addGlobalSecondaryIndex({
         indexName: 'DateIndex',
         partitionKey: {
           name: 'userId',
@@ -245,17 +198,9 @@ export class DynamoDBTables extends Construct {
         },
         projectionType: dynamodb.ProjectionType.ALL,
       });
-    }
 
     // OTP Table for email verification
-    if (useExistingTables) {
-      this.otpTable = dynamodb.Table.fromTableName(
-        this,
-        'OtpTable',
-        `mufradat-otp-${config.stage}`
-      );
-    } else {
-      this.otpTable = new dynamodb.Table(this, 'OtpTable', {
+    this.otpTable = new dynamodb.Table(this, 'OtpTable', {
       tableName: `mufradat-otp-${config.stage}`,
       partitionKey: {
         name: 'email',
@@ -274,9 +219,8 @@ export class DynamoDBTables extends Construct {
       pointInTimeRecovery: config.stage === 'prod',
       timeToLiveAttribute: 'expiresAt', // Auto-delete expired OTPs
       });
-    }
 
-    // Apply tags to all tables (only if creating new tables)
+    // Apply tags to all tables
     Tags.of(this.usersTable).add('Project', config.tags.Project);
     Tags.of(this.usersTable).add('Environment', config.tags.Environment);
     Tags.of(this.vocabularyTable).add('Project', config.tags.Project);
