@@ -5,11 +5,7 @@
 
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { getAccessToken, storeTokens, deleteAllTokens } from './storage';
-
-// API base URL (update this for your environment)
-const API_BASE_URL =  __DEV__
-  ? 'http://localhost:4566/restapis/gcvmfxxrmv/v1'  // LocalStack
-  : 'https://your-production-api.com/v1'; // Production
+import { API_BASE_URL } from '../config/api';
 
 // Create axios instance
 const api: AxiosInstance = axios.create({
@@ -95,8 +91,8 @@ export interface AuthResponse {
 /**
  * Register a new user
  */
-export async function register(data: RegisterData): Promise<AuthResponse> {
-  const response = await api.post<ApiResponse<AuthResponse>>('/auth/register', data);
+export async function register(data: RegisterData): Promise<{ message: string; email: string; emailVerified: boolean }> {
+  const response = await api.post<ApiResponse<{ message: string; email: string; emailVerified: boolean }>>('/auth/register', data);
   
   if (!response.data.success || !response.data.data) {
     throw new Error(response.data.error?.message || 'Registration failed');

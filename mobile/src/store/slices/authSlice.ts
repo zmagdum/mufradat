@@ -4,7 +4,7 @@
  */
 
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
-import { saveTokens, clearTokens, getAccessToken } from '../../services/storage';
+import { saveTokens, clearTokens, getAccessToken, getRefreshToken } from '../../services/storage';
 import api from '../../services/api';
 
 interface User {
@@ -40,49 +40,29 @@ export const register = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
-      const response = await api.post('/auth/register', credentials);
-      console.log('Register response:', response);
-      console.log('Register response.data:', response.data);
-      console.log('Register response.data type:', typeof response.data);
-      console.log('Register response.status:', response.status);
-      
-      // Handle empty response (MockIntegration limitation in LocalStack)
-      // Axios may return empty string, null, undefined, or empty object for empty responses
-      const responseData = response.data;
-      const isEmpty = !responseData || 
-          responseData === '' ||
-          responseData === null ||
-          responseData === undefined ||
-          (typeof responseData === 'string' && responseData.trim() === '') ||
-          (typeof responseData === 'object' && Object.keys(responseData).length === 0);
-      
-      console.log('Is response empty?', isEmpty, 'responseData:', responseData);
-      
-      // Check if response is empty OR missing required fields (safely)
-      const hasRequiredFields = responseData && 
-          typeof responseData === 'object' && 
-          responseData.userId && 
-          responseData.token;
-      
-      if (isEmpty || !hasRequiredFields) {
-        console.log('Using mock data - response is empty or missing required fields');
-        // Return mock data for testing
-        const mockUserId = 'mock-user-' + Date.now();
-        const mockToken = 'mock-token-' + Date.now();
-        await saveTokens(mockToken, mockToken);
-        console.log('Mock data created:', { mockUserId, mockToken });
-        return { 
-          user: { userId: mockUserId, email: credentials.email, username: credentials.username }, 
-          token: mockToken 
-        };
+      // Backend returns: { success: true, data: { message, email, emailVerified } }
+      const response = await api.post('/auth/register', {
+        email: credentials.email,
+        password: credentials.password,
+        givenName: credentials.username,
+      });
+
+      // Check if response has the expected format
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(response.data?.error?.message || 'Registration failed');
       }
+
+      const { email, emailVerified } = response.data.data;
       
-      const { userId, email, token } = response.data;
+      // Registration successful - user needs to login after email verification
+      // For now, return a temporary user object (user will need to login)
+      const tempUserId = `temp-${Date.now()}`;
       
-      // Save tokens securely
-      await saveTokens(token, token); // Using same token for both access and refresh for now
-      
-      return { user: { userId, email, username: credentials.username }, token };
+      return { 
+        user: { userId: tempUserId, email, username: credentials.username }, 
+        token: null, // No token yet - user needs to login
+        emailVerified,
+      };
     } catch (error: any) {
       // Extract error message from various response formats
       let errorMessage = 'Registration failed';
@@ -119,13 +99,28 @@ export const login = createAsyncThunk(
     { rejectWithValue }
   ) => {
     try {
+      // Backend returns: { success: true, data: { user: UserProfile, tokens: { accessToken, refreshToken } } }
       const response = await api.post('/auth/login', credentials);
-      const { userId, email, token } = response.data;
+      
+      // Check if response has the expected format
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error(response.data?.error?.message || 'Login failed');
+      }
+
+      const { user, tokens } = response.data.data;
       
       // Save tokens securely
-      await saveTokens(token, token); // Using same token for both access and refresh for now
+      await saveTokens(tokens.accessToken, tokens.refreshToken);
       
-      return { user: { userId, email }, token };
+      return { 
+        user: { 
+          userId: user.userId, 
+          email: user.email, 
+          username: user.username 
+        }, 
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+      };
     } catch (error: any) {
       // Extract error message from various response formats
       let errorMessage = 'Login failed';
@@ -156,15 +151,29 @@ export const logout = createAsyncThunk(
   'auth/logout',
   async (_, { rejectWithValue }) => {
     try {
-      await api.post('/auth/logout');
+      // Try to call logout API, but don't fail if it errors
+      try {
+        await api.post('/auth/logout');
+      } catch (apiError: any) {
+        // API call failed, but we'll still clear tokens locally
+        // This is fine - logout should always succeed locally
+        console.warn('Logout API call failed (this is OK):', apiError.message);
+      }
+      
+      // Always clear tokens locally - logout succeeds even if API fails
       await clearTokens();
       return null;
     } catch (error: any) {
-      // Clear tokens even if the API call fails
-      await clearTokens();
-      return rejectWithValue(
-        error.response?.data?.message || 'Logout failed'
-      );
+      // If token clearing fails, that's a real error
+      console.error('Failed to clear tokens:', error);
+      // Still try to clear tokens
+      try {
+        await clearTokens();
+      } catch (clearError) {
+        console.error('Critical: Could not clear tokens:', clearError);
+      }
+      // Don't set error - logout should always succeed if tokens are cleared
+      return null;
     }
   }
 );
@@ -173,16 +182,32 @@ export const checkAuth = createAsyncThunk(
   'auth/checkAuth',
   async (_, { rejectWithValue }) => {
     try {
-      const token = await getAccessToken();
-      if (!token) {
+      const accessToken = await getAccessToken();
+      const refreshToken = await getRefreshToken();
+      
+      if (!accessToken || !refreshToken) {
         return rejectWithValue('No token found');
       }
       
       // Verify token by fetching user profile
+      // Backend returns: { success: true, data: UserProfile }
       const response = await api.get('/users/profile');
-      const user = response.data;
       
-      return { user, token };
+      if (!response.data?.success || !response.data?.data) {
+        throw new Error('Invalid response format');
+      }
+      
+      const user = response.data.data;
+      
+      return { 
+        user: { 
+          userId: user.userId, 
+          email: user.email, 
+          username: user.username 
+        }, 
+        accessToken,
+        refreshToken,
+      };
     } catch (error: any) {
       await clearTokens();
       return rejectWithValue('Authentication check failed');
@@ -212,7 +237,9 @@ const authSlice = createSlice({
       })
       .addCase(register.fulfilled, (state, action) => {
         state.isLoading = false;
-        state.isAuthenticated = true;
+        // Registration doesn't automatically log in - user needs to login
+        // Only set authenticated if we have a token
+        state.isAuthenticated = !!action.payload.token;
         state.user = action.payload.user;
         state.accessToken = action.payload.token;
         state.refreshToken = action.payload.token;
@@ -233,8 +260,8 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.isAuthenticated = true;
         state.user = action.payload.user;
-        state.accessToken = action.payload.token;
-        state.refreshToken = action.payload.token;
+        state.accessToken = action.payload.accessToken;
+        state.refreshToken = action.payload.refreshToken;
         state.error = null;
       })
       .addCase(login.rejected, (state, action) => {
@@ -246,6 +273,7 @@ const authSlice = createSlice({
     builder
       .addCase(logout.pending, (state) => {
         state.isLoading = true;
+        state.error = null; // Clear any previous errors
       })
       .addCase(logout.fulfilled, (state) => {
         state.isLoading = false;
@@ -253,16 +281,17 @@ const authSlice = createSlice({
         state.user = null;
         state.accessToken = null;
         state.refreshToken = null;
-        state.error = null;
+        state.error = null; // Clear error on successful logout
       })
-      .addCase(logout.rejected, (state, action) => {
+      .addCase(logout.rejected, (state) => {
         state.isLoading = false;
-        // Still clear auth state even if logout API fails
+        // Still clear auth state even if logout fails
+        // Logout should always succeed locally (tokens cleared)
         state.isAuthenticated = false;
         state.user = null;
         state.accessToken = null;
         state.refreshToken = null;
-        state.error = action.payload as string;
+        state.error = null; // Don't show error - logout succeeded locally
       });
 
     // Check Auth
@@ -274,8 +303,8 @@ const authSlice = createSlice({
         state.isLoading = false;
         state.isAuthenticated = true;
         state.user = action.payload.user;
-        state.accessToken = action.payload.token;
-        state.refreshToken = action.payload.token;
+        state.accessToken = action.payload.accessToken;
+        state.refreshToken = action.payload.refreshToken;
         state.error = null;
       })
       .addCase(checkAuth.rejected, (state) => {

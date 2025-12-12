@@ -21,29 +21,74 @@ interface LoginScreenProps {
   navigation: any; // Replace with proper navigation type
 }
 
-export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
+export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, route }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const { login, isLoading, error, clearError } = useAuth();
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [serverError, setServerError] = useState<string | null>(null);
+  const { login, isLoading, error, clearError, isAuthenticated } = useAuth();
 
   useEffect(() => {
-    if (error) {
-      Alert.alert('Login Error', error);
+    // Check if we have a success message from registration
+    if (route?.params?.message) {
+      setSuccessMessage(route.params.message);
+      // Clear the message after 5 seconds
+      const timer = setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [route?.params?.message]);
+
+  // Navigate to home when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('🟢 User authenticated, navigating to Home...');
+      navigation.navigate('Home');
+    }
+  }, [isAuthenticated, navigation]);
+
+  // Clear errors when component mounts (e.g., after logout)
+  useEffect(() => {
+    // Clear any errors from previous logout attempts
+    if (error && error.includes('Logout')) {
       clearError();
+    }
+  }, []);
+
+  // Handle server errors - ensure error is visible
+  useEffect(() => {
+    if (error) {
+      setServerError(error);
+      console.log('🔴 Login error in state:', error);
+    } else {
+      // Clear local error when Redux error is cleared
+      if (serverError && !error) {
+        // Keep error visible until user tries again
+      }
     }
   }, [error]);
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Validation Error', 'Please enter both email and password');
+      setServerError('Please enter both email and password');
       return;
     }
 
+    // Clear any previous errors
+    clearError();
+    setServerError(null);
+
     try {
+      console.log('🟢 Starting login...');
       await login(email, password);
-      // Navigation to home screen will be handled by navigation guard
+      console.log('🟢 Login successful!');
+      // Navigation will happen via useEffect when isAuthenticated becomes true
     } catch (err: any) {
-      // Error is already shown via useEffect
+      // Error is stored in the auth context and will be displayed
+      // Also set it locally to ensure it's visible
+      const errorMessage = err?.message || 'Login failed. Please try again.';
+      setServerError(errorMessage);
       console.error('Login failed:', err);
     }
   };
@@ -62,6 +107,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
         <Text style={styles.subtitle}>Quranic Vocabulary Learning</Text>
 
         <View style={styles.form}>
+          {successMessage && (
+            <View style={styles.successContainer}>
+              <Text style={styles.successText}>{successMessage}</Text>
+            </View>
+          )}
+          {(error || serverError) && (
+            <View style={styles.errorContainer}>
+              <Text style={styles.errorText}>{error || serverError}</Text>
+            </View>
+          )}
           <TextInput
             style={styles.input}
             placeholder="Email"
@@ -71,6 +126,12 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             autoCapitalize="none"
             autoComplete="email"
             editable={!isLoading}
+            returnKeyType="next"
+            onSubmitEditing={() => {
+              // Focus password field when email field is submitted
+              // This is handled automatically by React Native
+            }}
+            blurOnSubmit={false}
           />
 
           <TextInput
@@ -82,6 +143,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation }) => {
             autoCapitalize="none"
             autoComplete="password"
             editable={!isLoading}
+            returnKeyType="done"
+            onSubmitEditing={handleLogin}
+            blurOnSubmit={true}
           />
 
           <TouchableOpacity
@@ -169,6 +233,32 @@ const styles = StyleSheet.create({
   linkText: {
     color: '#3498db',
     fontSize: 16,
+  },
+  successContainer: {
+    backgroundColor: '#d4edda',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#28a745',
+  },
+  successText: {
+    color: '#155724',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  errorContainer: {
+    backgroundColor: '#fee',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: '#e74c3c',
+  },
+  errorText: {
+    color: '#e74c3c',
+    fontSize: 14,
+    textAlign: 'center',
   },
 });
 
