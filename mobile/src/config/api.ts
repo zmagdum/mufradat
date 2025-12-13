@@ -15,9 +15,14 @@
 
 // Safe access to process.env that works in both web and native
 const getEnv = (key: string): string | undefined => {
-  // For web, process might not be defined, so we check first
+  // For native (iOS/Android), process.env should be available via babel-plugin-inline-dotenv
+  // For web, process.env is available via webpack DefinePlugin
   if (typeof process !== 'undefined' && process.env) {
-    return process.env[key];
+    const value = process.env[key];
+    // Return the value if it exists and is not undefined
+    if (value !== undefined && value !== null && value !== '') {
+      return value;
+    }
   }
   // Fallback: try to access via window (for webpack DefinePlugin)
   if (typeof window !== 'undefined' && (window as any).__ENV__) {
@@ -38,6 +43,11 @@ const getApiBaseUrl = (): string => {
     console.log('  EXPO_PUBLIC_API_BASE_URL:', API_BASE_URL || '(not set)');
     console.log('  EXPO_PUBLIC_API_ID:', API_ID || '(not set)');
     console.log('  EXPO_PUBLIC_API_STAGE:', STAGE);
+    // Also log the raw process.env to debug
+    if (typeof process !== 'undefined' && process.env) {
+      console.log('  process.env.EXPO_PUBLIC_API_BASE_URL:', process.env.EXPO_PUBLIC_API_BASE_URL || '(not set)');
+      console.log('  process.env keys with EXPO_PUBLIC_:', Object.keys(process.env).filter(k => k.startsWith('EXPO_PUBLIC_')));
+    }
   }
 
   // Option 1: Use full URL from environment variable (recommended)

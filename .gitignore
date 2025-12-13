@@ -121,5 +121,10 @@ env/
 ENV/
 .venv
 
+# Expo
+.expo/
+.expo-shared/
+mobile/.expo/
+
 # Note: .md files are NOT ignored - you can choose which ones to commit manually
 # All source code (.ts, .tsx, .js source files) is kept by default

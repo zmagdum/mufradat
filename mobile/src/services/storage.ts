@@ -1,9 +1,11 @@
 /**
  * Secure Storage Service
- * Uses Expo SecureStore for secure token storage
+ * Uses Expo SecureStore for native platforms and AsyncStorage for web
  */
 
+import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Storage keys
 const STORAGE_KEYS = {
@@ -13,12 +15,39 @@ const STORAGE_KEYS = {
   USER_EMAIL: 'mufradat_user_email',
 } as const;
 
+// Platform-specific storage functions
+const isWeb = Platform.OS === 'web';
+
+const storage = {
+  async setItem(key: string, value: string): Promise<void> {
+    if (isWeb) {
+      await AsyncStorage.setItem(key, value);
+    } else {
+      await SecureStore.setItemAsync(key, value);
+    }
+  },
+  async getItem(key: string): Promise<string | null> {
+    if (isWeb) {
+      return await AsyncStorage.getItem(key);
+    } else {
+      return await SecureStore.getItemAsync(key);
+    }
+  },
+  async removeItem(key: string): Promise<void> {
+    if (isWeb) {
+      await AsyncStorage.removeItem(key);
+    } else {
+      await SecureStore.deleteItemAsync(key);
+    }
+  },
+};
+
 /**
  * Store access token securely
  */
 export async function storeAccessToken(token: string): Promise<void> {
   try {
-    await SecureStore.setItemAsync(STORAGE_KEYS.ACCESS_TOKEN, token);
+    await storage.setItem(STORAGE_KEYS.ACCESS_TOKEN, token);
   } catch (error) {
     console.error('Failed to store access token:', error);
     throw new Error('Failed to store access token');
@@ -30,7 +59,7 @@ export async function storeAccessToken(token: string): Promise<void> {
  */
 export async function storeRefreshToken(token: string): Promise<void> {
   try {
-    await SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, token);
+    await storage.setItem(STORAGE_KEYS.REFRESH_TOKEN, token);
   } catch (error) {
     console.error('Failed to store refresh token:', error);
     throw new Error('Failed to store refresh token');
@@ -52,7 +81,7 @@ export async function storeTokens(accessToken: string, refreshToken: string): Pr
  */
 export async function getAccessToken(): Promise<string | null> {
   try {
-    return await SecureStore.getItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+    return await storage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
   } catch (error) {
     console.error('Failed to get access token:', error);
     return null;
@@ -64,7 +93,7 @@ export async function getAccessToken(): Promise<string | null> {
  */
 export async function getRefreshToken(): Promise<string | null> {
   try {
-    return await SecureStore.getItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+    return await storage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
   } catch (error) {
     console.error('Failed to get refresh token:', error);
     return null;
@@ -76,7 +105,7 @@ export async function getRefreshToken(): Promise<string | null> {
  */
 export async function deleteAccessToken(): Promise<void> {
   try {
-    await SecureStore.deleteItemAsync(STORAGE_KEYS.ACCESS_TOKEN);
+    await storage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
   } catch (error) {
     console.error('Failed to delete access token:', error);
   }
@@ -87,7 +116,7 @@ export async function deleteAccessToken(): Promise<void> {
  */
 export async function deleteRefreshToken(): Promise<void> {
   try {
-    await SecureStore.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+    await storage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
   } catch (error) {
     console.error('Failed to delete refresh token:', error);
   }
@@ -100,8 +129,8 @@ export async function deleteAllTokens(): Promise<void> {
   await Promise.all([
     deleteAccessToken(),
     deleteRefreshToken(),
-    SecureStore.deleteItemAsync(STORAGE_KEYS.USER_ID),
-    SecureStore.deleteItemAsync(STORAGE_KEYS.USER_EMAIL),
+    storage.removeItem(STORAGE_KEYS.USER_ID),
+    storage.removeItem(STORAGE_KEYS.USER_EMAIL),
   ]);
 }
 
@@ -110,8 +139,8 @@ export async function deleteAllTokens(): Promise<void> {
  */
 export async function storeUserInfo(userId: string, email: string): Promise<void> {
   await Promise.all([
-    SecureStore.setItemAsync(STORAGE_KEYS.USER_ID, userId),
-    SecureStore.setItemAsync(STORAGE_KEYS.USER_EMAIL, email),
+    storage.setItem(STORAGE_KEYS.USER_ID, userId),
+    storage.setItem(STORAGE_KEYS.USER_EMAIL, email),
   ]);
 }
 
@@ -120,7 +149,7 @@ export async function storeUserInfo(userId: string, email: string): Promise<void
  */
 export async function getUserId(): Promise<string | null> {
   try {
-    return await SecureStore.getItemAsync(STORAGE_KEYS.USER_ID);
+    return await storage.getItem(STORAGE_KEYS.USER_ID);
   } catch (error) {
     console.error('Failed to get user ID:', error);
     return null;
@@ -132,7 +161,7 @@ export async function getUserId(): Promise<string | null> {
  */
 export async function getUserEmail(): Promise<string | null> {
   try {
-    return await SecureStore.getItemAsync(STORAGE_KEYS.USER_EMAIL);
+    return await storage.getItem(STORAGE_KEYS.USER_EMAIL);
   } catch (error) {
     console.error('Failed to get user email:', error);
     return null;

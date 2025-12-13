@@ -6,6 +6,7 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
+    "ios:fix": "./scripts/fix-ios-simulator.sh",
     "web": "expo start --web",
     "setup:api": "./scripts/setup-api-env.sh",
     "test": "jest",

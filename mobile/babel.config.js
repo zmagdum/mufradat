@@ -3,6 +3,18 @@ module.exports = function(api) {
   return {
     presets: ['babel-preset-expo'],
     plugins: [
+      // Load .env file for native builds (iOS/Android)
+      // This plugin inlines environment variables at build time
+      // Must be first to ensure env vars are available to other plugins
+      [
+        'inline-dotenv',
+        {
+          path: '.env',
+          systemVar: 'overwrite', // Use .env file values over system env vars
+          silent: false, // Show warnings if .env file is missing
+          unsafe: false, // Don't allow unsafe variable names
+        },
+      ],
       [
         'module-resolver',
         {
