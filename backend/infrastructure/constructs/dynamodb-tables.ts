@@ -15,6 +15,7 @@ export interface DynamoDBTablesProps {
 export class DynamoDBTables extends Construct {
   public readonly usersTable: dynamodb.Table;
   public readonly vocabularyTable: dynamodb.Table;
+  public readonly booksTable: dynamodb.Table;
   public readonly progressTable: dynamodb.Table;
   public readonly conjugationsTable: dynamodb.Table;
   public readonly sessionsTable: dynamodb.Table;
@@ -98,6 +99,58 @@ export class DynamoDBTables extends Construct {
         },
         projectionType: dynamodb.ProjectionType.ALL,
       });
+
+    // GSI for book-based queries
+    this.vocabularyTable.addGlobalSecondaryIndex({
+        indexName: 'BookIndex',
+        partitionKey: {
+          name: 'bookId',
+          type: dynamodb.AttributeType.STRING,
+        },
+        sortKey: {
+          name: 'chapter',
+          type: dynamodb.AttributeType.NUMBER,
+        },
+        projectionType: dynamodb.ProjectionType.ALL,
+      });
+
+    // Books and Chapters Table
+    // Stores both books and chapters in the same table
+    // Books: bookId (PK), "BOOK" (SK)
+    // Chapters: bookId (PK), chapterId (SK)
+    this.booksTable = new dynamodb.Table(this, 'BooksTable', {
+      tableName: `mufradat-books-${config.stage}`,
+      partitionKey: {
+        name: 'bookId',
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'itemType',
+        type: dynamodb.AttributeType.STRING,
+      },
+      billingMode: config.dynamodb.billingMode === 'PROVISIONED'
+        ? dynamodb.BillingMode.PROVISIONED
+        : dynamodb.BillingMode.PAY_PER_REQUEST,
+      readCapacity: config.dynamodb.readCapacity,
+      writeCapacity: config.dynamodb.writeCapacity,
+      removalPolicy,
+      pointInTimeRecovery: config.stage === 'prod',
+    });
+
+    // GSI for querying chapters by book
+    // This allows querying all chapters for a book
+    this.booksTable.addGlobalSecondaryIndex({
+      indexName: 'BookChaptersIndex',
+      partitionKey: {
+        name: 'bookId',
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'chapterNumber',
+        type: dynamodb.AttributeType.NUMBER,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
 
     // Word Progress Table
     this.progressTable = new dynamodb.Table(this, 'ProgressTable', {
@@ -225,6 +278,8 @@ export class DynamoDBTables extends Construct {
     Tags.of(this.usersTable).add('Environment', config.tags.Environment);
     Tags.of(this.vocabularyTable).add('Project', config.tags.Project);
     Tags.of(this.vocabularyTable).add('Environment', config.tags.Environment);
+    Tags.of(this.booksTable).add('Project', config.tags.Project);
+    Tags.of(this.booksTable).add('Environment', config.tags.Environment);
     Tags.of(this.progressTable).add('Project', config.tags.Project);
     Tags.of(this.progressTable).add('Environment', config.tags.Environment);
     Tags.of(this.conjugationsTable).add('Project', config.tags.Project);
@@ -245,6 +300,12 @@ export class DynamoDBTables extends Construct {
       value: this.vocabularyTable.tableName,
       description: 'Vocabulary table name',
       exportName: `${config.stage}-VocabularyTableName`,
+    });
+
+    new cdk.CfnOutput(this, 'BooksTableName', {
+      value: this.booksTable.tableName,
+      description: 'Books and chapters table name',
+      exportName: `${config.stage}-BooksTableName`,
     });
 
     new cdk.CfnOutput(this, 'ProgressTableName', {

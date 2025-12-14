@@ -40,11 +40,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, route }) =
     }
   }, [route?.params?.message]);
 
-  // Navigate to home when authenticated
+  // Navigate to dashboard when authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('🟢 User authenticated, navigating to Home...');
-      navigation.navigate('Home');
+      console.log('🟢 User authenticated, navigating to Dashboard...');
+      navigation.navigate('Dashboard');
     }
   }, [isAuthenticated, navigation]);
 

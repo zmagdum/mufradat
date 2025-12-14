@@ -10,7 +10,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { store } from './src/store';
 import { AuthProvider } from './src/contexts/AuthContext';
 import { LoginScreen, RegisterScreen } from './src/screens/auth';
-import { HomeScreen } from './src/screens/HomeScreen';
+import { DashboardScreen } from './src/screens/DashboardScreen';
 import { StatusBar } from 'expo-status-bar';
 
 const Stack = createStackNavigator();
@@ -47,11 +47,11 @@ export default function App() {
               }}
             />
             <Stack.Screen
-              name="Home"
-              component={HomeScreen}
+              name="Dashboard"
+              component={DashboardScreen}
               options={{
-                title: 'Home',
-                headerLeft: () => null, // Hide back button on home screen
+                title: 'Dashboard',
+                headerLeft: () => null, // Hide back button on dashboard screen
               }}
             />
           </Stack.Navigator>

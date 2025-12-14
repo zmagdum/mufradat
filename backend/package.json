@@ -22,7 +22,11 @@
     "localstack:stop": "podman-compose down",
     "localstack:logs": "podman-compose logs -f localstack",
     "localstack:restart": "podman-compose restart localstack",
-    "localstack:clean": "podman-compose down -v && rm -rf localstack-data"
+    "localstack:clean": "podman-compose down -v && rm -rf localstack-data",
+    "import:vocabulary": "ts-node scripts/import-vocabulary-data.ts",
+    "summary:vocabulary": "ts-node scripts/import-vocabulary-data.ts --summary",
+    "delete:vocabulary": "ts-node scripts/delete-vocabulary-data.ts",
+    "diagnose:vocabulary": "ts-node scripts/diagnose-import.ts"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity-provider": "^3.478.0",
@@ -38,6 +42,7 @@
     "aws-lambda": "^1.0.7",
     "bcryptjs": "^3.0.3",
     "constructs": "^10.3.0",
+    "csv-parse": "^5.6.0",
     "jsonwebtoken": "^9.0.2",
     "redis": "^4.6.11",
     "source-map-support": "^0.5.21",
