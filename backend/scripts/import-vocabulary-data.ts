@@ -8,7 +8,8 @@
  * - backend/data/words.csv (vocabulary words)
  * 
  * Usage:
- *   npm run import:vocabulary
+ *   npm run import:vocabulary                                    # Default: updates existing words
+ *   npm run import:vocabulary -- --no-update                     # Only add new words, skip existing
  *   npm run import:vocabulary -- --book 1
  *   npm run import:vocabulary -- --dry-run
  *   npm run import:vocabulary -- --books-file path/to/books.csv --words-file path/to/words.csv
@@ -711,7 +712,8 @@ async function main() {
   let wordsFilePath: string | null = null;
   let bookFilter: number | undefined = undefined;
   let dryRun = false;
-  let updateExisting = false;
+  // Default: update existing words (changed from false to true)
+  let updateExisting = true;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--books-file' && args[i + 1]) {
@@ -725,7 +727,11 @@ async function main() {
       i++;
     } else if (args[i] === '--dry-run') {
       dryRun = true;
+    } else if (args[i] === '--no-update') {
+      // Only add new words, skip existing ones
+      updateExisting = false;
     } else if (args[i] === '--update-existing') {
+      // Keep for backward compatibility, but now it's the default
       updateExisting = true;
     }
   }
@@ -755,6 +761,7 @@ async function main() {
   console.log(`Books Table: ${BOOKS_TABLE_NAME}`);
   console.log(`S3 Base URL: ${S3_BASE_URL}`);
   console.log(`Mode: ${dryRun ? 'DRY RUN' : 'LIVE'}`);
+  console.log(`Update Mode: ${updateExisting ? 'UPDATE EXISTING WORDS (default)' : 'SKIP EXISTING WORDS (--no-update)'}`);
   console.log('');
 
   // Parse books CSV

@@ -110,11 +110,13 @@ This will show:
 
 ### Update Existing Words
 
-By default, the import script skips duplicate words. To update existing words instead:
+By default, the import script **updates existing words** when duplicates are found. To skip existing words and only add new ones:
 
 ```bash
-npm run import:vocabulary -- --update-existing
+npm run import:vocabulary -- --no-update
 ```
+
+**Note:** The `--update-existing` flag is still supported for backward compatibility, but it's now the default behavior.
 
 ### Delete Data
 
@@ -195,8 +197,8 @@ npm run import:vocabulary
    - Creates unique IDs for books and chapters
    - **Generates deterministic wordIds** based on `book-chapter-page-wordNumber` to prevent duplicates
 7. **Checks for Duplicates**: Before inserting, checks if word already exists
-   - If exists and `--update-existing` is used: Updates the word
-   - If exists and `--update-existing` is NOT used: Skips the word (prevents duplicates)
+   - **Default behavior**: Updates existing words (if word exists, it will be updated with new data)
+   - If `--no-update` is used: Skips existing words (only adds new words)
 8. **Determines Difficulty**: Based on frequency:
    - `beginner`: frequency > 100
    - `intermediate`: frequency 20-100
