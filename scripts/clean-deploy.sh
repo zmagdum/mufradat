@@ -37,7 +37,7 @@ echo "✅ LocalStack is running"
 echo ""
 
 # Step 2: Delete CloudFormation stack
-echo "🗑️  Step 1: Deleting CloudFormation stack..."
+echo "🗑️  Step 1: Deleting CloudFormation stack...$AWS_CMD"
 STACK_STATUS=$($AWS_CMD cloudformation describe-stacks --stack-name "$STACK_NAME" --query 'Stacks[0].StackStatus' --output text 2>&1 || echo "NOT_FOUND")
 
 if [ "$STACK_STATUS" != "NOT_FOUND" ]; then

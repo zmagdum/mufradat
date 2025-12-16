@@ -5,24 +5,27 @@ A comprehensive cross-platform mobile application for learning Quranic vocabular
 ## Project Structure
 
 ```
-├── QuranicVocabularyApp/          # React Native mobile app
+├── mobile/                       # React Native mobile app (Expo)
 │   ├── src/
 │   │   ├── components/            # Reusable UI components
 │   │   ├── screens/              # Screen components
 │   │   ├── services/             # API and service layers
 │   │   ├── utils/                # Utility functions
 │   │   ├── types/                # TypeScript type definitions
-│   │   ├── hooks/                # Custom React hooks
-│   │   ├── store/                # State management
-│   │   └── test-utils/           # Testing utilities
+│   │   ├── contexts/             # React contexts
+│   │   ├── store/                # State management (Redux)
+│   │   └── config/               # App configuration
 │   └── ...
-├── backend-services/             # AWS Lambda functions and backend
-│   ├── lambda-functions/         # Individual Lambda functions
-│   ├── shared/                   # Shared utilities and types
-│   ├── types/                    # Backend type definitions
-│   └── utils/                    # Backend utility functions
-├── quranic-vocab-infrastructure/ # AWS CDK infrastructure code
-└── README.md
+├── backend/                      # AWS Lambda functions and backend
+│   ├── src/lambdas/              # Individual Lambda functions
+│   ├── infrastructure/          # AWS CDK infrastructure code
+│   ├── scripts/                  # Deployment and utility scripts
+│   └── ...
+├── shared/                       # Shared code between mobile and backend
+│   ├── types/                    # Shared TypeScript types
+│   ├── validators/               # Shared validation functions
+│   └── transformers/             # Data transformation utilities
+└── docs/                         # Project documentation
 ```
 
 ## Features
@@ -68,7 +71,7 @@ A comprehensive cross-platform mobile application for learning Quranic vocabular
 
 1. Navigate to the mobile app directory:
    ```bash
-   cd QuranicVocabularyApp
+   cd mobile
    ```
 
 2. Install dependencies:
@@ -92,7 +95,7 @@ A comprehensive cross-platform mobile application for learning Quranic vocabular
 
 1. Navigate to the backend directory:
    ```bash
-   cd backend-services
+   cd backend
    ```
 
 2. Install dependencies:
@@ -107,20 +110,7 @@ A comprehensive cross-platform mobile application for learning Quranic vocabular
 
 ### Infrastructure Setup
 
-1. Navigate to the infrastructure directory:
-   ```bash
-   cd quranic-vocab-infrastructure
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Deploy the infrastructure:
-   ```bash
-   npx cdk deploy
-   ```
+The infrastructure code is located in `backend/infrastructure/`. See the main [README.md](../README.md) for detailed deployment instructions.
 
 ## Development Scripts
 

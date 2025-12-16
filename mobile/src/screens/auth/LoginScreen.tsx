@@ -14,8 +14,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  ScrollView,
+  Dimensions,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../contexts/AuthContext';
+import { IslamicColors, IslamicGradients } from '../../constants/islamicTheme';
+
+const { height } = Dimensions.get('window');
 
 interface LoginScreenProps {
   navigation: any; // Replace with proper navigation type
@@ -98,142 +104,380 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, route }) =
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
-      <View style={styles.content}>
-        <Text style={styles.title}>Mufradat</Text>
-        <Text style={styles.subtitle}>Quranic Vocabulary Learning</Text>
-
-        <View style={styles.form}>
-          {successMessage && (
-            <View style={styles.successContainer}>
-              <Text style={styles.successText}>{successMessage}</Text>
-            </View>
-          )}
-          {(error || serverError) && (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{error || serverError}</Text>
-            </View>
-          )}
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoComplete="email"
-            editable={!isLoading}
-            returnKeyType="next"
-            onSubmitEditing={() => {
-              // Focus password field when email field is submitted
-              // This is handled automatically by React Native
-            }}
-            blurOnSubmit={false}
-          />
-
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            autoCapitalize="none"
-            autoComplete="password"
-            editable={!isLoading}
-            returnKeyType="done"
-            onSubmitEditing={handleLogin}
-            blurOnSubmit={true}
-          />
-
-          <TouchableOpacity
-            style={[styles.button, isLoading && styles.buttonDisabled]}
-            onPress={handleLogin}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Login</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.linkButton}
-            onPress={navigateToRegister}
-            disabled={isLoading}
-          >
-            <Text style={styles.linkText}>
-              Don't have an account? Register
-            </Text>
-          </TouchableOpacity>
+    <View style={styles.container}>
+      {/* Gradient Background */}
+      <LinearGradient
+        colors={IslamicGradients.primary}
+        style={styles.gradientBackground}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        {/* Decorative Header Pattern */}
+        <View style={styles.headerPattern}>
+          <Text style={styles.patternText}>✦ ✧ ✦ ✧ ✦ ✧ ✦</Text>
         </View>
-      </View>
-    </KeyboardAvoidingView>
+
+        <KeyboardAvoidingView
+          style={styles.keyboardView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Logo & Branding Section */}
+            <View style={styles.brandingSection}>
+              {/* Crescent Moon Icon */}
+              <View style={styles.logoContainer}>
+                <Text style={styles.crescentIcon}>☪</Text>
+              </View>
+
+
+              {/* Tagline */}
+              <Text style={styles.tagline}>
+                ✦ Learn the words of the Quran ✦
+              </Text>
+            </View>
+
+            {/* Login Card */}
+            <View style={styles.loginCard}>
+              {/* Decorative Top Border */}
+              <View style={styles.cardBorder} />
+
+              <Text style={styles.welcomeText}>Assalamu Alaikum</Text>
+              <Text style={styles.subtitleText}>
+                Sign in to continue your learning journey
+              </Text>
+
+              {/* Success/Error Messages */}
+              {successMessage && (
+                <View style={styles.successContainer}>
+                  <Text style={styles.successText}>{successMessage}</Text>
+                </View>
+              )}
+              {(error || serverError) && (
+                <View style={styles.errorContainer}>
+                  <Text style={styles.errorText}>{error || serverError}</Text>
+                </View>
+              )}
+
+              {/* Email Input */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Email</Text>
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.inputIcon}>✉</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    placeholder="your@email.com"
+                    placeholderTextColor={IslamicColors.lightGray}
+                    value={email}
+                    onChangeText={setEmail}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoComplete="email"
+                    editable={!isLoading}
+                    returnKeyType="next"
+                    blurOnSubmit={false}
+                  />
+                </View>
+              </View>
+
+              {/* Password Input */}
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>Password</Text>
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.inputIcon}>🔒</Text>
+                  <TextInput
+                    style={[styles.textInput, styles.passwordInput]}
+                    placeholder="Enter your password"
+                    placeholderTextColor={IslamicColors.lightGray}
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                    autoCapitalize="none"
+                    autoComplete="password"
+                    editable={!isLoading}
+                    returnKeyType="done"
+                    onSubmitEditing={handleLogin}
+                    blurOnSubmit={true}
+                  />
+                </View>
+              </View>
+
+              {/* Forgot Password Link */}
+              <TouchableOpacity style={styles.forgotPassword}>
+                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              </TouchableOpacity>
+
+              {/* Login Button */}
+              <TouchableOpacity
+                style={styles.loginButton}
+                onPress={handleLogin}
+                disabled={isLoading}
+              >
+                <LinearGradient
+                  colors={[IslamicColors.emeraldGreen, IslamicColors.deepTeal]}
+                  style={styles.loginButtonGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color={IslamicColors.white} />
+                  ) : (
+                    <>
+                      <Text style={styles.loginButtonText}>Sign In</Text>
+                      <Text style={styles.loginButtonIcon}>→</Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+
+              {/* Register Link */}
+              <View style={styles.registerContainer}>
+                <Text style={styles.registerText}>New to Mufradat? </Text>
+                <TouchableOpacity onPress={navigateToRegister} disabled={isLoading}>
+                  <Text style={styles.registerLink}>Create Account</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Decorative Bottom Border */}
+              <View style={styles.cardBorderBottom} />
+            </View>
+
+            {/* Islamic Ornament Footer */}
+            <View style={styles.footer}>
+              <Text style={styles.footerOrnament}>❁ ❃ ❁</Text>
+              <Text style={styles.footerText}>
+                بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
+              </Text>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </LinearGradient>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
   },
-  content: {
+  gradientBackground: {
     flex: 1,
+  },
+  headerPattern: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 100,
     justifyContent: 'center',
-    padding: 20,
-  },
-  title: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 8,
-    color: '#2c3e50',
-  },
-  subtitle: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 40,
-    color: '#7f8c8d',
-  },
-  form: {
-    width: '100%',
-  },
-  input: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 15,
-    fontSize: 16,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    color: '#2c3e50', // Text color for input fields
-  },
-  button: {
-    backgroundColor: '#3498db',
-    borderRadius: 8,
-    padding: 15,
     alignItems: 'center',
-    marginTop: 10,
+    paddingTop: Platform.OS === 'ios' ? 50 : 40,
+    zIndex: 1,
   },
-  buttonDisabled: {
-    backgroundColor: '#95a5a6',
+  patternText: {
+    fontSize: 24,
+    color: IslamicColors.gold,
+    opacity: 0.6,
+    letterSpacing: 8,
   },
-  buttonText: {
-    color: '#fff',
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: height * 0.1,
+    paddingBottom: 40,
+  },
+
+  // Branding Section
+  brandingSection: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  logoContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: IslamicColors.gold,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  crescentIcon: {
+    fontSize: 40,
+    color: IslamicColors.deepTeal,
+  },
+  arabicTitle: {
+    fontSize: 48,
+    fontWeight: '700',
+    color: IslamicColors.white,
+    marginBottom: 4,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  englishTitle: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: IslamicColors.lightGold,
+    letterSpacing: 4,
+    textTransform: 'uppercase',
+  },
+  tagline: {
+    fontSize: 14,
+    color: IslamicColors.white,
+    opacity: 0.9,
+    marginTop: 8,
+    letterSpacing: 1,
+  },
+
+  // Login Card
+  loginCard: {
+    backgroundColor: IslamicColors.ivoryCream,
+    borderRadius: 24,
+    padding: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  cardBorder: {
+    position: 'absolute',
+    top: 0,
+    left: 20,
+    right: 20,
+    height: 4,
+    backgroundColor: IslamicColors.gold,
+    borderBottomLeftRadius: 4,
+    borderBottomRightRadius: 4,
+  },
+  cardBorderBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 40,
+    right: 40,
+    height: 3,
+    backgroundColor: IslamicColors.emeraldGreen,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
+    opacity: 0.5,
+  },
+  welcomeText: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: IslamicColors.deepNavy,
+    textAlign: 'center',
+    marginBottom: 4,
+    marginTop: 8,
+  },
+  subtitleText: {
+    fontSize: 15,
+    color: IslamicColors.darkGray,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+
+  // Input Styles
+  inputContainer: {
+    marginBottom: 20,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: IslamicColors.deepNavy,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: IslamicColors.white,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: IslamicColors.softSand,
+    paddingHorizontal: 16,
+  },
+  inputIcon: {
     fontSize: 18,
+    marginRight: 12,
+  },
+  textInput: {
+    flex: 1,
+    paddingVertical: 16,
+    fontSize: 16,
+    color: IslamicColors.deepNavy,
+  },
+  passwordInput: {
+    paddingRight: 16,
+  },
+
+  // Forgot Password
+  forgotPassword: {
+    alignSelf: 'flex-end',
+    marginBottom: 24,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    color: IslamicColors.emeraldGreen,
     fontWeight: '600',
   },
-  linkButton: {
-    marginTop: 20,
+
+  // Login Button
+  loginButton: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 24,
+    shadowColor: IslamicColors.emeraldGreen,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  loginButtonGradient: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 24,
+  },
+  loginButtonText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: IslamicColors.white,
+    letterSpacing: 1,
+  },
+  loginButtonIcon: {
+    fontSize: 20,
+    color: IslamicColors.white,
+    marginLeft: 8,
+  },
+
+  // Register
+  registerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  linkText: {
-    color: '#3498db',
-    fontSize: 16,
+  registerText: {
+    fontSize: 15,
+    color: IslamicColors.darkGray,
   },
+  registerLink: {
+    fontSize: 15,
+    color: IslamicColors.emeraldGreen,
+    fontWeight: '700',
+  },
+
+  // Success/Error Messages
   successContainer: {
     backgroundColor: '#d4edda',
     padding: 12,
@@ -259,6 +503,23 @@ const styles = StyleSheet.create({
     color: '#e74c3c',
     fontSize: 14,
     textAlign: 'center',
+  },
+
+  // Footer
+  footer: {
+    alignItems: 'center',
+    marginTop: 32,
+  },
+  footerOrnament: {
+    fontSize: 20,
+    color: IslamicColors.gold,
+    marginBottom: 8,
+    letterSpacing: 8,
+  },
+  footerText: {
+    fontSize: 16,
+    color: IslamicColors.white,
+    opacity: 0.9,
   },
 });
 
