@@ -15,13 +15,18 @@ import {
 import { UserProfile } from '../../shared/types';
 
 interface UpdateProfileRequest {
+  username?: string;
   givenName?: string;
   familyName?: string;
+  fullName?: string;
+  dateOfBirth?: string;
   studyGoal?: number;
   learningModalities?: ('visual' | 'audio' | 'contextual' | 'associative')[];
   preferredDifficulty?: 'beginner' | 'intermediate' | 'advanced';
   dailyGoalMinutes?: number;
   notificationsEnabled?: boolean;
+  selectedBookId?: string;
+  preferredLanguage?: string;
 }
 
 /**
@@ -69,6 +74,14 @@ export async function handler(
     // Add updatable fields
     if (body.givenName !== undefined) addUpdate('givenName', body.givenName);
     if (body.familyName !== undefined) addUpdate('familyName', body.familyName);
+    if (body.fullName !== undefined) addUpdate('fullName', body.fullName);
+    if (body.dateOfBirth !== undefined) {
+      // Validate date format (ISO 8601)
+      if (body.dateOfBirth && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(body.dateOfBirth)) {
+        return ErrorResponses.badRequest('Invalid date format. Use ISO 8601 format.');
+      }
+      addUpdate('dateOfBirth', body.dateOfBirth);
+    }
     if (body.studyGoal !== undefined) {
       if (body.studyGoal < 1 || body.studyGoal > 100) {
         return ErrorResponses.badRequest('Study goal must be between 1 and 100');
@@ -89,6 +102,12 @@ export async function handler(
     }
     if (body.notificationsEnabled !== undefined) {
       addUpdate('notificationsEnabled', body.notificationsEnabled);
+    }
+    if (body.selectedBookId !== undefined) {
+      addUpdate('selectedBookId', body.selectedBookId);
+    }
+    if (body.preferredLanguage !== undefined) {
+      addUpdate('preferredLanguage', body.preferredLanguage);
     }
 
     // Always update timestamp

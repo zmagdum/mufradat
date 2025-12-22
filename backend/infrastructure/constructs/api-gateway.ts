@@ -236,6 +236,40 @@ export class ApiGateway extends Construct {
     // Grant DynamoDB permissions
     this.dynamoTables.usersTable.grantReadData(refreshFunction);
 
+    // Create Get Profile Lambda Function
+    const getProfileFunction = new NodejsFunction(this, 'GetProfileFunction', {
+      entry: path.join(__dirname, '../../src/lambdas/users/get-profile.ts'),
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      timeout: cdk.Duration.seconds(10),
+      environment: {
+        USERS_TABLE_NAME: this.dynamoTables.usersTable.tableName,
+        STAGE: this.config.stage,
+        AWS_ENDPOINT_URL: this.config.localStack?.enabled ? this.config.localStack.endpoint : '',
+        JWT_SECRET: process.env.JWT_SECRET || 'dev-secret-key-change-in-production',
+      },
+    });
+
+    // Grant DynamoDB permissions
+    this.dynamoTables.usersTable.grantReadData(getProfileFunction);
+
+    // Create Update Profile Lambda Function
+    const updateProfileFunction = new NodejsFunction(this, 'UpdateProfileFunction', {
+      entry: path.join(__dirname, '../../src/lambdas/users/update-profile.ts'),
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      timeout: cdk.Duration.seconds(10),
+      environment: {
+        USERS_TABLE_NAME: this.dynamoTables.usersTable.tableName,
+        STAGE: this.config.stage,
+        AWS_ENDPOINT_URL: this.config.localStack?.enabled ? this.config.localStack.endpoint : '',
+        JWT_SECRET: process.env.JWT_SECRET || 'dev-secret-key-change-in-production',
+      },
+    });
+
+    // Grant DynamoDB permissions
+    this.dynamoTables.usersTable.grantReadWriteData(updateProfileFunction);
+
     // Auth endpoints (public)
     const auth = this.api.root.addResource('auth');
     const register = auth.addResource('register');
@@ -262,10 +296,55 @@ export class ApiGateway extends Construct {
     // Add GET method to profile endpoint
     profile.addMethod(
       'GET',
-      new apigateway.MockIntegration({
-        integrationResponses: [{ statusCode: '200' }],
-        requestTemplates: { 'application/json': '{ "statusCode": 200 }' },
-      }),
+      new apigateway.LambdaIntegration(getProfileFunction),
+      this.jwtAuthorizer
+        ? {
+            authorizer: this.jwtAuthorizer,
+            methodResponses: [{ statusCode: '200' }],
+          }
+        : {
+            methodResponses: [{ statusCode: '200' }],
+          }
+    );
+
+    // Add PATCH method to profile endpoint
+    profile.addMethod(
+      'PATCH',
+      new apigateway.LambdaIntegration(updateProfileFunction),
+      this.jwtAuthorizer
+        ? {
+            authorizer: this.jwtAuthorizer,
+            methodResponses: [{ statusCode: '200' }],
+          }
+        : {
+            methodResponses: [{ statusCode: '200' }],
+          }
+    );
+
+    // Content endpoints (books, etc.)
+    const content = this.api.root.addResource('content');
+    const books = content.addResource('books');
+    
+    // Create List Books Lambda Function
+    const listBooksFunction = new NodejsFunction(this, 'ListBooksFunction', {
+      entry: path.join(__dirname, '../../src/lambdas/content/list-books.ts'),
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_18_X,
+      timeout: cdk.Duration.seconds(10),
+      environment: {
+        BOOKS_TABLE_NAME: this.dynamoTables.booksTable.tableName,
+        STAGE: this.config.stage,
+        AWS_ENDPOINT_URL: this.config.localStack?.enabled ? this.config.localStack.endpoint : '',
+      },
+    });
+
+    // Grant DynamoDB permissions
+    this.dynamoTables.booksTable.grantReadData(listBooksFunction);
+
+    // Add GET method to books endpoint
+    books.addMethod(
+      'GET',
+      new apigateway.LambdaIntegration(listBooksFunction),
       this.jwtAuthorizer
         ? {
             authorizer: this.jwtAuthorizer,

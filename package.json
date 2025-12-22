@@ -8,6 +8,11 @@
     "backend",
     "shared"
   ],
+  "nohoist": [
+    "mobile/react-native-reanimated",
+    "mobile/jest-worker",
+    "mobile/react-native-worklets"
+  ],
   "scripts": {
     "mobile": "cd mobile && npm start",
     "backend": "cd backend && npm run build",
@@ -22,6 +27,11 @@
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
+  },
+  "dependencies": {
+    "@expo/config-plugins": "^54.0.4",
+    "expo": "^54.0.30",
+    "expo-secure-store": "^15.0.8",
+    "jest-worker": "^29.7.0"
   }
 }
-
