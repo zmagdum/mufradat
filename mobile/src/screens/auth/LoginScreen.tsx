@@ -40,13 +40,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({ navigation, route }) =
     }
   }, [route?.params?.message]);
 
-  // Navigate to dashboard when authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      console.log('🟢 User authenticated, navigating to Dashboard...');
-      navigation.navigate('Dashboard');
-    }
-  }, [isAuthenticated, navigation]);
+  // Navigation is handled automatically by AppNavigator based on authentication state
+  // No need to manually navigate here
 
   // Clear errors when component mounts (e.g., after logout)
   useEffect(() => {

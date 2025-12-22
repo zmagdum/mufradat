@@ -196,3 +196,44 @@ export async function getUserStatistics(): Promise<UserStatistics> {
   return response.data.data;
 }
 
+/**
+ * Book interface
+ */
+export interface Book {
+  bookId: string;
+  title: string;
+  titleUrdu?: string;
+  description: string;
+  descriptionUrdu?: string;
+  series?: string;
+  seriesUrdu?: string;
+}
+
+/**
+ * Get list of books
+ */
+export async function getBooks(): Promise<Book[]> {
+  try {
+    const response = await api.get<ApiResponse<{ books: Book[]; count: number }>>('/content/books');
+    if (response.data?.success && response.data?.data) {
+      const data = response.data.data;
+      // Handle both array and object with books property
+      if (Array.isArray(data)) {
+        return data;
+      }
+      if (data && typeof data === 'object' && 'books' in data && Array.isArray(data.books)) {
+        return data.books;
+      }
+    }
+    console.warn('Unexpected books API response format:', response.data);
+  } catch (error: any) {
+    console.error('Failed to fetch books:', error.response?.data || error.message);
+    // Log more details for debugging
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', error.response.data);
+    }
+  }
+  return [];
+}
+

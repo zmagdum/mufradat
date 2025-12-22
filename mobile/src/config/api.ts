@@ -4,13 +4,16 @@
  * 
  * SETUP INSTRUCTIONS:
  * 1. Deploy your backend: cd backend && npm run deploy:local
- * 2. Get your API Gateway ID:
+ * 2. Run the setup script (recommended):
+ *    cd mobile && npm run setup:api
+ *    OR manually:
+ * 3. Get your API Gateway ID:
  *    awslocal apigateway get-rest-apis --query 'items[0].id' --output text
- * 3. Set environment variable in .env file:
- *    EXPO_PUBLIC_API_ID=your-api-id-here
+ * 4. Set environment variable in .env file:
+ *    EXPO_PUBLIC_API_BASE_URL=http://localhost:4566/restapis/YOUR_API_ID/v1/_user_request_
  *    OR
- *    EXPO_PUBLIC_API_BASE_URL=https://your-api-id.execute-api.localhost.localstack.cloud:4566/v1
- * 4. Restart your Expo app with: npm start -- --clear
+ *    EXPO_PUBLIC_API_ID=your-api-id-here (will auto-construct URL)
+ * 5. Restart your Expo app with: npm start -- --clear
  */
 
 // Safe access to process.env that works in both web and native
@@ -72,8 +75,9 @@ const getApiBaseUrl = (): string => {
       const errorMessage = 
         '⚠️  API_ID not set! Please set EXPO_PUBLIC_API_ID or EXPO_PUBLIC_API_BASE_URL.\n' +
         '   Get your API ID: awslocal apigateway get-rest-apis --query "items[0].id" --output text\n' +
-        '   Then set in .env file: EXPO_PUBLIC_API_ID=your-api-id\n' +
-        '   OR set: EXPO_PUBLIC_API_BASE_URL=https://your-api-id.execute-api.localhost.localstack.cloud:4566/v1\n' +
+        '   Then set in .env file:\n' +
+        '   EXPO_PUBLIC_API_BASE_URL=http://localhost:4566/restapis/YOUR_API_ID/v1/_user_request_\n' +
+        '   OR: EXPO_PUBLIC_API_ID=your-api-id\n' +
         '   NOTE: After setting .env file, you MUST restart Expo with: npm start -- --clear';
       console.error(errorMessage);
       // Return localhost as fallback for web development
@@ -82,13 +86,14 @@ const getApiBaseUrl = (): string => {
       return 'http://localhost:3000';
     }
     
-    // LocalStack execute-api format
-    const url = `https://${API_ID}.execute-api.localhost.localstack.cloud:4566/${STAGE}`;
+    // LocalStack native format (recommended - works reliably)
+    // Format: http://localhost:4566/restapis/{api-id}/{stage}/_user_request_
+    const url = `http://localhost:4566/restapis/${API_ID}/${STAGE}/_user_request_`;
     // Validate constructed URL
     try {
       new URL(url);
       if (__DEV__) {
-        console.log('✅ Using constructed URL from API_ID:', url);
+        console.log('✅ Using LocalStack native URL format:', url);
       }
       return url;
     } catch (error) {
